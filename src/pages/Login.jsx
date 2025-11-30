@@ -31,6 +31,7 @@ export default function Login() {
         <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
             <div className="w-full max-w-md space-y-8 rounded-2xl bg-white p-8 shadow-lg">
                 <div className="text-center">
+                    <img src="/pwa-192x192.png" alt="Logo" className="mx-auto h-16 w-16 rounded-2xl mb-4 shadow-sm" />
                     <h1 className="text-3xl font-bold text-primary">Ilm Journey</h1>
                     <p className="mt-2 text-gray-600">Log masuk ke akaun anda</p>
                 </div>
