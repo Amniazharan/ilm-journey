@@ -36,7 +36,14 @@ export default function Settings() {
     const handleAddChild = async (e) => {
         e.preventDefault();
         try {
-            const child = await addChild(newChild);
+            // Map frontend field names to database field names
+            const childData = {
+                name: newChild.name,
+                gender: newChild.gender,
+                dob: newChild.dob,
+                quran_enabled: newChild.quranEnabled
+            };
+            const child = await addChild(childData);
             if (child) {
                 setChildren([...children, child]);
                 setNewChild({ name: '', gender: 'male', dob: '', quranEnabled: false });
