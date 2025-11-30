@@ -227,7 +227,7 @@ export function useSupabaseData() {
 
     // --- Logs ---
 
-    const fetchLogs = useCallback(async (subjectId, milestoneId = null) => {
+    const fetchLogs = useCallback(async (subjectId, milestoneId = null, childId = null) => {
         setLoading(true);
         try {
             let query = supabase
@@ -235,11 +235,15 @@ export function useSupabaseData() {
                 .select('*')
                 .order('date', { ascending: false });
 
-            // For Quran syllabus, filter by milestone_name instead of subject_id
+            // For Quran syllabus, filter by milestone_name AND child_id
             if (subjectId === 'quran-syllabus') {
                 query = query
                     .is('subject_id', null)
                     .eq('milestone_name', decodeURIComponent(milestoneId));
+
+                if (childId) {
+                    query = query.eq('child_id', childId);
+                }
             } else {
                 query = query.eq('subject_id', subjectId);
                 if (milestoneId) {

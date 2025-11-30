@@ -32,7 +32,7 @@ export default function ProgressLog() {
     }, [childId, subjectId, milestoneId]);
 
     const loadLogs = async () => {
-        const data = await fetchLogs(subjectId, milestoneId);
+        const data = await fetchLogs(subjectId, milestoneId, childId);
         setLogs(data);
     };
 
@@ -43,6 +43,7 @@ export default function ProgressLog() {
                 subject_id: subjectId === 'quran-syllabus' ? null : subjectId,
                 milestone_id: subjectId === 'quran-syllabus' ? null : milestoneId,
                 milestone_name: subjectId === 'quran-syllabus' ? decodeURIComponent(milestoneId) : null,
+                child_id: childId, // IMPORTANT: Link to specific child
                 date: formData.date,
                 notes: formData.notes || null,
                 page: formData.page || null
