@@ -1,24 +1,27 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Settings as SettingsIcon, User } from 'lucide-react';
+import { Plus, Settings as SettingsIcon, User, LogOut } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { useAuth } from '../context/AuthContext';
 
 export default function Dashboard() {
     const navigate = useNavigate();
+    const { signOut } = useAuth();
     const [children, setChildren] = useState([]);
 
     useEffect(() => {
-        const isAuthenticated = localStorage.getItem('isAuthenticated');
-        if (!isAuthenticated) {
-            navigate('/login');
-            return;
-        }
-
+        // LocalStorage check is no longer needed as we use AuthContext, 
+        // but keeping data logic for now until migration
         const storedChildren = localStorage.getItem('children');
         if (storedChildren) {
             setChildren(JSON.parse(storedChildren));
         }
-    }, [navigate]);
+    }, []);
+
+    const handleLogout = async () => {
+        await signOut();
+        navigate('/login');
+    };
 
     const calculateAge = (dob) => {
         const birthDate = new Date(dob);
@@ -40,9 +43,14 @@ export default function Dashboard() {
                         <h1 className="text-xl font-bold text-gray-900">Ilm Journey</h1>
                         <p className="text-sm text-gray-500">Pantau Perkembangan Ilmu Anak</p>
                     </div>
-                    <Link to="/settings" className="rounded-full p-2 hover:bg-slate-100">
-                        <SettingsIcon className="h-6 w-6 text-gray-600" />
-                    </Link>
+                    <div className="flex items-center space-x-2">
+                        <Link to="/settings" className="rounded-full p-2 hover:bg-slate-100">
+                            <SettingsIcon className="h-6 w-6 text-gray-600" />
+                        </Link>
+                        <button onClick={handleLogout} className="rounded-full p-2 hover:bg-slate-100 text-red-500">
+                            <LogOut className="h-6 w-6" />
+                        </button>
+                    </div>
                 </div>
             </header>
 
