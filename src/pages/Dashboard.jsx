@@ -37,8 +37,8 @@ export default function Dashboard() {
             <header className="sticky top-0 z-10 bg-white px-6 py-4 shadow-sm">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-xl font-bold text-gray-900">Keluarga Saya</h1>
-                        <p className="text-sm text-gray-500">Pantau perkembangan anak-anak</p>
+                        <h1 className="text-xl font-bold text-gray-900">Ilm Journey</h1>
+                        <p className="text-sm text-gray-500">Pantau Perkembangan Ilmu Anak</p>
                     </div>
                     <Link to="/settings" className="rounded-full p-2 hover:bg-slate-100">
                         <SettingsIcon className="h-6 w-6 text-gray-600" />
