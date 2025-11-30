@@ -233,11 +233,18 @@ export function useSupabaseData() {
             let query = supabase
                 .from('progress_logs')
                 .select('*')
-                .eq('subject_id', subjectId)
                 .order('date', { ascending: false });
 
-            if (milestoneId) {
-                query = query.eq('milestone_id', milestoneId);
+            // For Quran syllabus, filter by milestone_name instead of subject_id
+            if (subjectId === 'quran-syllabus') {
+                query = query
+                    .is('subject_id', null)
+                    .eq('milestone_name', decodeURIComponent(milestoneId));
+            } else {
+                query = query.eq('subject_id', subjectId);
+                if (milestoneId) {
+                    query = query.eq('milestone_id', milestoneId);
+                }
             }
 
             const { data, error } = await query;

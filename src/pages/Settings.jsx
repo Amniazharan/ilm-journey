@@ -25,8 +25,10 @@ export default function Settings() {
     });
 
     useEffect(() => {
-        loadChildren();
-    }, [fetchChildren]);
+        if (user) {
+            loadChildren();
+        }
+    }, [user]); // Changed from fetchChildren to user
 
     const loadChildren = async () => {
         const data = await fetchChildren();

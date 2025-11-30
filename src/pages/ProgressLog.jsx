@@ -40,14 +40,15 @@ export default function ProgressLog() {
         e.preventDefault();
         try {
             const logData = {
-                subject_id: subjectId,
+                subject_id: subjectId === 'quran-syllabus' ? null : subjectId,
                 milestone_id: subjectId === 'quran-syllabus' ? null : milestoneId,
                 milestone_name: subjectId === 'quran-syllabus' ? decodeURIComponent(milestoneId) : null,
                 date: formData.date,
-                notes: formData.notes,
-                page: formData.page
+                notes: formData.notes || null,
+                page: formData.page || null
             };
 
+            console.log('Saving log with data:', logData);
             const newLog = await addLog(logData);
             if (newLog) {
                 setLogs([newLog, ...logs]);
@@ -55,7 +56,8 @@ export default function ProgressLog() {
             }
         } catch (error) {
             console.error('Failed to save log:', error);
-            alert('Gagal menyimpan rekod.');
+            console.error('Error details:', error.message, error.code, error.details);
+            alert(`Gagal menyimpan rekod: ${error.message}`);
         }
     };
 

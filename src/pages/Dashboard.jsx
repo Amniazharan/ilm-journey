@@ -17,8 +17,10 @@ export default function Dashboard() {
             const data = await fetchChildren();
             setChildren(data);
         };
-        loadChildren();
-    }, [fetchChildren]);
+        if (user) {
+            loadChildren();
+        }
+    }, [user]); // Changed from fetchChildren to user to avoid loop
 
     const handleLogout = async () => {
         await signOut();
