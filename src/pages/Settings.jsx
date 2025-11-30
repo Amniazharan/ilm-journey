@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Trash2, Save, Edit2, Loader2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useSupabaseData } from '../hooks/useSupabaseData';
+import { useAuth } from '../context/AuthContext';
 
 export default function Settings() {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const { fetchChildren, addChild, updateChild, deleteChild, loading: dataLoading } = useSupabaseData();
     const [children, setChildren] = useState([]);
     const [isAdding, setIsAdding] = useState(false);

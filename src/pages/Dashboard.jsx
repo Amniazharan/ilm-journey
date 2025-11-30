@@ -8,7 +8,7 @@ import { Loader2 } from 'lucide-react';
 
 export default function Dashboard() {
     const navigate = useNavigate();
-    const { signOut } = useAuth();
+    const { user, signOut } = useAuth();
     const { fetchChildren, loading } = useSupabaseData();
     const [children, setChildren] = useState([]);
 
