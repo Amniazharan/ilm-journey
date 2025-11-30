@@ -3,20 +3,22 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Settings as SettingsIcon, User, LogOut } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
+import { useSupabaseData } from '../hooks/useSupabaseData';
+import { Loader2 } from 'lucide-react';
 
 export default function Dashboard() {
     const navigate = useNavigate();
     const { signOut } = useAuth();
+    const { fetchChildren, loading } = useSupabaseData();
     const [children, setChildren] = useState([]);
 
     useEffect(() => {
-        // LocalStorage check is no longer needed as we use AuthContext, 
-        // but keeping data logic for now until migration
-        const storedChildren = localStorage.getItem('children');
-        if (storedChildren) {
-            setChildren(JSON.parse(storedChildren));
-        }
-    }, []);
+        const loadChildren = async () => {
+            const data = await fetchChildren();
+            setChildren(data);
+        };
+        loadChildren();
+    }, [fetchChildren]);
 
     const handleLogout = async () => {
         await signOut();
@@ -56,7 +58,11 @@ export default function Dashboard() {
 
             {/* Content */}
             <main className="p-6">
-                {children.length === 0 ? (
+                {loading ? (
+                    <div className="flex h-64 items-center justify-center">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                ) : children.length === 0 ? (
                     <div className="mt-10 flex flex-col items-center justify-center text-center">
                         <div className="mb-4 rounded-full bg-slate-100 p-6">
                             <User className="h-12 w-12 text-slate-400" />

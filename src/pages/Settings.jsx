@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Save, Edit2 } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Save, Edit2, Loader2 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { useSupabaseData } from '../hooks/useSupabaseData';
 
 export default function Settings() {
     const navigate = useNavigate();
+    const { fetchChildren, addChild, updateChild, deleteChild, loading: dataLoading } = useSupabaseData();
     const [children, setChildren] = useState([]);
     const [isAdding, setIsAdding] = useState(false);
     const [newChild, setNewChild] = useState({
@@ -23,54 +25,51 @@ export default function Settings() {
     });
 
     useEffect(() => {
-        const storedChildren = localStorage.getItem('children');
-        if (storedChildren) {
-            setChildren(JSON.parse(storedChildren));
-        }
-    }, []);
+        loadChildren();
+    }, [fetchChildren]);
 
-    const saveChildren = (updatedChildren) => {
-        setChildren(updatedChildren);
-        localStorage.setItem('children', JSON.stringify(updatedChildren));
+    const loadChildren = async () => {
+        const data = await fetchChildren();
+        setChildren(data);
     };
 
-    const handleAddChild = (e) => {
+    const handleAddChild = async (e) => {
         e.preventDefault();
-        const child = {
-            ...newChild,
-            id: crypto.randomUUID(),
-            subjects: []
-        };
-
-        // Add Quran syllabus if enabled
-        if (child.quranEnabled) {
-            child.subjects.push({
-                id: 'quran-syllabus',
-                name: 'Hafalan Al-Quran',
-                isSystem: true,
-                milestones: [] // We'll populate this dynamically or structurally in the details view
-            });
-        }
-
-        saveChildren([...children, child]);
-        setNewChild({ name: '', gender: 'male', dob: '', quranEnabled: false });
-        setIsAdding(false);
-    };
-
-    const handleDeleteChild = (id) => {
-        if (confirm('Adakah anda pasti mahu memadam data anak ini?')) {
-            saveChildren(children.filter(c => c.id !== id));
-        }
-    };
-
-    const toggleQuran = (childId) => {
-        const updated = children.map(c => {
-            if (c.id === childId) {
-                return { ...c, quranEnabled: !c.quranEnabled };
+        try {
+            const child = await addChild(newChild);
+            if (child) {
+                setChildren([...children, child]);
+                setNewChild({ name: '', gender: 'male', dob: '', quranEnabled: false });
+                setIsAdding(false);
             }
-            return c;
-        });
-        saveChildren(updated);
+        } catch (error) {
+            console.error('Failed to add child:', error);
+            alert('Gagal menambah anak.');
+        }
+    };
+
+    const handleDeleteChild = async (id) => {
+        if (confirm('Adakah anda pasti mahu memadam data anak ini?')) {
+            try {
+                await deleteChild(id);
+                setChildren(children.filter(c => c.id !== id));
+            } catch (error) {
+                console.error('Failed to delete child:', error);
+                alert('Gagal memadam anak.');
+            }
+        }
+    };
+
+    const toggleQuran = async (child) => {
+        try {
+            const updated = await updateChild(child.id, { quran_enabled: !child.quran_enabled });
+            if (updated) {
+                setChildren(children.map(c => c.id === child.id ? updated : c));
+            }
+        } catch (error) {
+            console.error('Failed to toggle Quran:', error);
+            alert('Gagal mengemaskini status Quran.');
+        }
     };
 
     // Edit Handlers
@@ -88,21 +87,23 @@ export default function Settings() {
         setEditFormData({ name: '', gender: 'male', dob: '' });
     };
 
-    const handleUpdateChild = (e) => {
+    const handleUpdateChild = async (e) => {
         e.preventDefault();
-        const updatedChildren = children.map(c => {
-            if (c.id === editingChildId) {
-                return {
-                    ...c,
-                    name: editFormData.name,
-                    gender: editFormData.gender,
-                    dob: editFormData.dob
-                };
+        try {
+            const updated = await updateChild(editingChildId, {
+                name: editFormData.name,
+                gender: editFormData.gender,
+                dob: editFormData.dob
+            });
+
+            if (updated) {
+                setChildren(children.map(c => c.id === editingChildId ? updated : c));
+                setEditingChildId(null);
             }
-            return c;
-        });
-        saveChildren(updatedChildren);
-        setEditingChildId(null);
+        } catch (error) {
+            console.error('Failed to update child:', error);
+            alert('Gagal mengemaskini maklumat anak.');
+        }
     };
 
     return (
@@ -181,9 +182,10 @@ export default function Settings() {
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90"
+                                    disabled={dataLoading}
+                                    className="flex-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
                                 >
-                                    Simpan
+                                    {dataLoading ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : 'Simpan'}
                                 </button>
                             </div>
                         </form>
@@ -201,94 +203,101 @@ export default function Settings() {
                 {/* Children List */}
                 <section className="space-y-4">
                     <h2 className="text-lg font-semibold text-gray-900">Senarai Anak</h2>
-                    {children.map(child => (
-                        <div key={child.id} className="rounded-xl bg-white p-4 shadow-sm">
-                            {editingChildId === child.id ? (
-                                <form onSubmit={handleUpdateChild} className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700">Nama</label>
-                                        <input
-                                            type="text"
-                                            required
-                                            value={editFormData.name}
-                                            onChange={e => setEditFormData({ ...editFormData, name: e.target.value })}
-                                            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-primary focus:ring-primary"
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
+                    {dataLoading && children.length === 0 ? (
+                        <div className="flex justify-center py-8">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        </div>
+                    ) : (
+                        children.map(child => (
+                            <div key={child.id} className="rounded-xl bg-white p-4 shadow-sm">
+                                {editingChildId === child.id ? (
+                                    <form onSubmit={handleUpdateChild} className="space-y-4">
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700">Jantina</label>
-                                            <select
-                                                value={editFormData.gender}
-                                                onChange={e => setEditFormData({ ...editFormData, gender: e.target.value })}
-                                                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-primary focus:ring-primary"
-                                            >
-                                                <option value="male">Lelaki</option>
-                                                <option value="female">Perempuan</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">Tarikh Lahir</label>
+                                            <label className="block text-sm font-medium text-gray-700">Nama</label>
                                             <input
-                                                type="date"
+                                                type="text"
                                                 required
-                                                value={editFormData.dob}
-                                                onChange={e => setEditFormData({ ...editFormData, dob: e.target.value })}
+                                                value={editFormData.name}
+                                                onChange={e => setEditFormData({ ...editFormData, name: e.target.value })}
                                                 className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-primary focus:ring-primary"
                                             />
                                         </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">Jantina</label>
+                                                <select
+                                                    value={editFormData.gender}
+                                                    onChange={e => setEditFormData({ ...editFormData, gender: e.target.value })}
+                                                    className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-primary focus:ring-primary"
+                                                >
+                                                    <option value="male">Lelaki</option>
+                                                    <option value="female">Perempuan</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">Tarikh Lahir</label>
+                                                <input
+                                                    type="date"
+                                                    required
+                                                    value={editFormData.dob}
+                                                    onChange={e => setEditFormData({ ...editFormData, dob: e.target.value })}
+                                                    className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-primary focus:ring-primary"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="flex space-x-3 pt-2">
+                                            <button
+                                                type="button"
+                                                onClick={handleCancelEdit}
+                                                className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                                            >
+                                                Batal
+                                            </button>
+                                            <button
+                                                type="submit"
+                                                disabled={dataLoading}
+                                                className="flex-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
+                                            >
+                                                {dataLoading ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : 'Simpan'}
+                                            </button>
+                                        </div>
+                                    </form>
+                                ) : (
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h3 className="font-medium text-gray-900">{child.name}</h3>
+                                            <p className="text-sm text-gray-500">{new Date(child.dob).toLocaleDateString()}</p>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <button
+                                                onClick={() => toggleQuran(child)}
+                                                className={cn(
+                                                    "rounded-lg px-3 py-1 text-xs font-medium transition-colors",
+                                                    child.quran_enabled
+                                                        ? "bg-green-100 text-green-700"
+                                                        : "bg-gray-100 text-gray-600"
+                                                )}
+                                            >
+                                                {child.quran_enabled ? 'Quran: ON' : 'Quran: OFF'}
+                                            </button>
+                                            <button
+                                                onClick={() => handleEditClick(child)}
+                                                className="rounded-lg p-2 text-blue-500 hover:bg-blue-50"
+                                            >
+                                                <Edit2 className="h-5 w-5" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteChild(child.id)}
+                                                className="rounded-lg p-2 text-red-500 hover:bg-red-50"
+                                            >
+                                                <Trash2 className="h-5 w-5" />
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div className="flex space-x-3 pt-2">
-                                        <button
-                                            type="button"
-                                            onClick={handleCancelEdit}
-                                            className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                                        >
-                                            Batal
-                                        </button>
-                                        <button
-                                            type="submit"
-                                            className="flex-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90"
-                                        >
-                                            Simpan
-                                        </button>
-                                    </div>
-                                </form>
-                            ) : (
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <h3 className="font-medium text-gray-900">{child.name}</h3>
-                                        <p className="text-sm text-gray-500">{new Date(child.dob).toLocaleDateString()}</p>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        <button
-                                            onClick={() => toggleQuran(child.id)}
-                                            className={cn(
-                                                "rounded-lg px-3 py-1 text-xs font-medium transition-colors",
-                                                child.quranEnabled
-                                                    ? "bg-green-100 text-green-700"
-                                                    : "bg-gray-100 text-gray-600"
-                                            )}
-                                        >
-                                            {child.quranEnabled ? 'Quran: ON' : 'Quran: OFF'}
-                                        </button>
-                                        <button
-                                            onClick={() => handleEditClick(child)}
-                                            className="rounded-lg p-2 text-blue-500 hover:bg-blue-50"
-                                        >
-                                            <Edit2 className="h-5 w-5" />
-                                        </button>
-                                        <button
-                                            onClick={() => handleDeleteChild(child.id)}
-                                            className="rounded-lg p-2 text-red-500 hover:bg-red-50"
-                                        >
-                                            <Trash2 className="h-5 w-5" />
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    ))}
+                                )}
+                            </div>
+                        ))
+                    )}
                 </section>
             </main>
         </div>
