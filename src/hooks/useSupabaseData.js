@@ -32,14 +32,19 @@ export function useSupabaseData() {
         if (!user) return null;
         setLoading(true);
         try {
+            console.log('Adding child with data:', childData);
             const { data, error } = await supabase
                 .from('children')
                 .insert([{ ...childData, user_id: user.id }])
                 .select()
                 .single();
-            if (error) throw error;
+            if (error) {
+                console.error('Supabase error:', error);
+                throw error;
+            }
             return data;
         } catch (err) {
+            console.error('Caught error:', err);
             setError(err.message);
             throw err;
         } finally {

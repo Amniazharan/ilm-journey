@@ -43,6 +43,7 @@ export default function Settings() {
                 dob: newChild.dob,
                 quran_enabled: newChild.quranEnabled
             };
+            console.log('Sending child data:', childData);
             const child = await addChild(childData);
             if (child) {
                 setChildren([...children, child]);
@@ -51,7 +52,8 @@ export default function Settings() {
             }
         } catch (error) {
             console.error('Failed to add child:', error);
-            alert('Gagal menambah anak.');
+            console.error('Error details:', error.message, error.details, error.hint);
+            alert(`Gagal menambah anak: ${error.message}`);
         }
     };
 
