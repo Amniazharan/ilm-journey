@@ -15,7 +15,13 @@ export function useSupabaseData() {
         try {
             const { data, error } = await supabase
                 .from('children')
-                .select('*')
+                .select(`
+                    *,
+                    subjects (
+                        *,
+                        milestones (*)
+                    )
+                `)
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: true });
             if (error) throw error;
@@ -237,9 +243,12 @@ export function useSupabaseData() {
 
             // For Quran syllabus, filter by milestone_name AND child_id
             if (subjectId === 'quran-syllabus') {
-                query = query
-                    .is('subject_id', null)
-                    .eq('milestone_name', decodeURIComponent(milestoneId));
+                query = query.is('subject_id', null);
+
+                // Only filter by milestone_name if provided
+                if (milestoneId) {
+                    query = query.eq('milestone_name', decodeURIComponent(milestoneId));
+                }
 
                 if (childId) {
                     query = query.eq('child_id', childId);
@@ -296,6 +305,48 @@ export function useSupabaseData() {
         }
     };
 
+    const fetchCompletionStatus = async (childId) => {
+        setLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('progress_logs')
+                .select('milestone_id, milestone_name')
+                .eq('child_id', childId)
+                .eq('page', 'SELESAI');
+            if (error) throw error;
+            return data;
+        } catch (err) {
+            setError(err.message);
+            return [];
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchRecentAchievements = async () => {
+        setLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('progress_logs')
+                .select(`
+                    *,
+                    children (name, gender),
+                    milestones (description)
+                `)
+                .eq('page', 'SELESAI')
+                .order('date', { ascending: false })
+                .limit(5);
+
+            if (error) throw error;
+            return data;
+        } catch (err) {
+            setError(err.message);
+            return [];
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return {
         loading,
         error,
@@ -312,6 +363,8 @@ export function useSupabaseData() {
         deleteMilestone,
         fetchLogs,
         addLog,
-        deleteLog
+        deleteLog,
+        fetchCompletionStatus,
+        fetchRecentAchievements
     };
 }

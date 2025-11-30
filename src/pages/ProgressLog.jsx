@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Calendar, Trash2, Edit2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Plus, Calendar, Trash2, Edit2, Loader2, CheckCircle } from 'lucide-react';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 
 export default function ProgressLog() {
-    const { childId, subjectId, milestoneId } = useParams();
+    // FIX: Destructure 'id' from params and rename to 'childId' to match route definition
+    const { id: childId, subjectId, milestoneId } = useParams();
     const navigate = useNavigate();
     const { fetchLogs, addLog, deleteLog, loading } = useSupabaseData();
 
@@ -12,6 +13,7 @@ export default function ProgressLog() {
     const [logs, setLogs] = useState([]);
     const [isAdding, setIsAdding] = useState(false);
     const [editingLogId, setEditingLogId] = useState(null);
+    const [isCompleted, setIsCompleted] = useState(false);
 
     const [formData, setFormData] = useState({
         date: new Date().toISOString().split('T')[0],
@@ -34,6 +36,49 @@ export default function ProgressLog() {
     const loadLogs = async () => {
         const data = await fetchLogs(subjectId, milestoneId, childId);
         setLogs(data);
+        // Check if completed
+        const completedLog = data.find(l => l.page === 'SELESAI');
+        setIsCompleted(!!completedLog);
+    };
+
+    const toggleCompletion = async () => {
+        if (isCompleted) {
+            // Find the completion log and delete it
+            const completedLog = logs.find(l => l.page === 'SELESAI');
+            if (completedLog) {
+                if (!confirm('Tanda sebagai belum selesai?')) return;
+                try {
+                    await deleteLog(completedLog.id);
+                    setLogs(logs.filter(l => l.id !== completedLog.id));
+                    setIsCompleted(false);
+                } catch (error) {
+                    console.error('Failed to unmark completion:', error);
+                    alert('Gagal mengemaskini status.');
+                }
+            }
+        } else {
+            // Add completion log
+            if (!confirm('Tanda sebagai selesai?')) return;
+            try {
+                const logData = {
+                    subject_id: subjectId === 'quran-syllabus' ? null : subjectId,
+                    milestone_id: subjectId === 'quran-syllabus' ? null : milestoneId,
+                    milestone_name: subjectId === 'quran-syllabus' ? decodeURIComponent(milestoneId) : null,
+                    child_id: childId,
+                    date: new Date().toISOString().split('T')[0],
+                    notes: 'Telah selesai menghafal.',
+                    page: 'SELESAI'
+                };
+                const newLog = await addLog(logData);
+                if (newLog) {
+                    setLogs([newLog, ...logs]);
+                    setIsCompleted(true);
+                }
+            } catch (error) {
+                console.error('Failed to mark completion:', error);
+                alert('Gagal menanda selesai.');
+            }
+        }
     };
 
     const saveLog = async (e) => {
@@ -66,7 +111,11 @@ export default function ProgressLog() {
         if (!confirm('Padam rekod ini?')) return;
         try {
             await deleteLog(logId);
-            setLogs(logs.filter(l => l.id !== logId));
+            const updatedLogs = logs.filter(l => l.id !== logId);
+            setLogs(updatedLogs);
+            // Re-check completion status in case the deleted log was the completion log
+            const completedLog = updatedLogs.find(l => l.page === 'SELESAI');
+            setIsCompleted(!!completedLog);
         } catch (error) {
             console.error('Failed to delete log:', error);
             alert('Gagal memadam rekod.');
@@ -92,14 +141,32 @@ export default function ProgressLog() {
     return (
         <div className="min-h-screen bg-slate-50 pb-20">
             <header className="sticky top-0 z-10 bg-white px-6 py-4 shadow-sm">
-                <div className="flex items-center space-x-4">
-                    <button onClick={() => navigate(-1)} className="rounded-full p-2 hover:bg-slate-100">
-                        <ArrowLeft className="h-6 w-6 text-gray-600" />
-                    </button>
-                    <div className="flex-1">
-                        <h1 className="text-lg font-bold text-gray-900 line-clamp-1">{milestoneName}</h1>
-                        <p className="text-xs text-gray-500">Rekod Perkembangan</p>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                        <button onClick={() => navigate(-1)} className="rounded-full p-2 hover:bg-slate-100">
+                            <ArrowLeft className="h-6 w-6 text-gray-600" />
+                        </button>
+                        <div>
+                            <h1 className="text-lg font-bold text-gray-900 line-clamp-1">{milestoneName}</h1>
+                            <p className="text-xs text-gray-500">Rekod Perkembangan</p>
+                        </div>
                     </div>
+                    <button
+                        onClick={toggleCompletion}
+                        className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors ${isCompleted
+                                ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                    >
+                        {isCompleted ? (
+                            <>
+                                <CheckCircle className="h-4 w-4" />
+                                <span>Selesai</span>
+                            </>
+                        ) : (
+                            <span>Tanda Selesai</span>
+                        )}
+                    </button>
                 </div>
             </header>
 
@@ -179,7 +246,7 @@ export default function ProgressLog() {
                         <p className="text-center text-sm text-gray-500 py-8">Tiada rekod lagi.</p>
                     ) : (
                         logs.map((log) => (
-                            <div key={log.id} className="relative rounded-xl bg-white p-4 shadow-sm transition-all hover:shadow-md">
+                            <div key={log.id} className={`relative rounded-xl p-4 shadow-sm transition-all hover:shadow-md ${log.page === 'SELESAI' ? 'bg-green-50 border border-green-100' : 'bg-white'}`}>
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-center space-x-2 text-sm text-gray-500 mb-2">
                                         <Calendar className="h-4 w-4" />
@@ -202,7 +269,7 @@ export default function ProgressLog() {
                                 </div>
 
                                 {log.page && (
-                                    <div className="mb-2 inline-block rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700">
+                                    <div className={`mb-2 inline-block rounded-md px-2 py-1 text-xs font-semibold ${log.page === 'SELESAI' ? 'bg-green-100 text-green-700' : 'bg-blue-50 text-blue-700'}`}>
                                         {log.page}
                                     </div>
                                 )}
